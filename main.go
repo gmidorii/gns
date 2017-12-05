@@ -1,15 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"net/http"
+	"net"
 )
 
 func run() error {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hi"))
-	})
-	return http.ListenAndServe(":53", nil)
+	udpAddr := &net.UDPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: 53,
+	}
+	l, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
+	buf := make([]byte, 1024)
+	for {
+		_, addr, err := l.ReadFromUDP(buf)
+		if err != nil {
+			return err
+		}
+
+		go dns(l, addr, buf)
+	}
+}
+
+func dns(l *net.UDPConn, addr *net.UDPAddr, buf []byte) {
+	fmt.Println(string(buf))
+	l.WriteToUDP([]byte("PONG"), addr)
 }
 
 func main() {
